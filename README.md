@@ -46,3 +46,13 @@
 - `guides/a4-postcard-layout/` はがき100×148mmをA4に配置し、余白が枚数に与える違い。
 
 **重要な制限**：面付けは同じ方向にそろえる行列配置を2方向だけ比較。印刷物を混在回転させる最適化は行わない。実際の裁断・塗り足し・印字可能範囲の計算や、印刷テンプレート／PDFの作成は行わない。
+
+## 2026-11-22 — 画像の印刷PPI確認
+
+- `tools/image-print-check/`：画像を選択し、端末内で縦横ピクセル数を読み取って各用紙サイズでのPPIを試算（画像データのサーバー送信はしない）。
+- `guides/image-ppi-print/`：PPIとDPIの違い、300PPIの目安。
+- `guides/image-a4-print/`：A4印刷に必要な画素数を計算。
+
+画像の選択はブラウザ内で行い、JPEG/PNG/WebPなどの画像形式に対応。HEIC/HEIFの読取可否はブラウザに依存する。50MBより大きいファイルは拒否。
+PPI判定は画質や印刷業者の入稿可否の保証ではない。
+参考：https://canon.jp/biz/product/printer/imageprograf/graphic-photo/essentials2018/print-tips
