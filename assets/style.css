@@ -10,3 +10,11 @@
 .copy-action{margin:9px 7px 5px 0;border:1px solid #91bcae;border-radius:9px;background:#fff;color:var(--teal);font:inherit;font-size:12px;font-weight:750;padding:9px 12px;cursor:pointer}
 .copy-action:hover{background:#e4f6ed}.copy-status{font-size:12px;color:var(--teal)}
 @media(max-width:600px){.header nav{gap:12px}.photo-sample{min-height:140px}}
+
+/* 用紙サイズ逆引きと大判用紙ページ */
+.result-row a{color:var(--teal);text-decoration:underline;text-underline-offset:3px}
+.tool-form input:focus-visible,.tool-form select:focus-visible,.search input:focus-visible{outline:2px solid #118b78;outline-offset:2px}
+.btn:focus-visible,.card:focus-visible,nav a:focus-visible,button:focus-visible{outline:3px solid #118b78;outline-offset:3px}
+table tbody tr:nth-child(even){background:#f9fcfa}
+.table-scroll th{white-space:nowrap}.diagram-paper{max-height:245px;min-height:100px}
+@media(max-width:600px){.table-scroll{margin-inline:-4px}.table-scroll table{min-width:490px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}

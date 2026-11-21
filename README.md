@@ -19,3 +19,11 @@
 ## ローカル確認
 
 `python -m http.server 8000`
+
+## 2026-11-22 — JIS用紙規格・逆引き拡充
+
+- A0〜A8・JIS B0〜B8の規格寸法を一覧に掲載（18種類）
+- 測った縦横から近い規格を調べる `/tools/paper-finder/`
+- コピー倍率・A判とB判の違いのガイドを追加
+- JIS規格寸法の参考: https://k-cr.jp/support/spec/paper/ および https://www.aik.co.jp/02support/03nyukou/06kamiwari.html
+- Search Consoleの無料公式画面だけでも運用可能。Windsor.aiは必須ではない
