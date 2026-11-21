@@ -26,3 +26,9 @@ table tbody tr:nth-child(even){background:#f9fcfa}
 #cropCustomSize[hidden]{display:none}#cropCustomSize:not([hidden]){display:flex;flex-direction:column;gap:8px}
 .result b{overflow-wrap:anywhere}
 @media(max-width:600px){.preset-controls{gap:7px}.preset-action{padding:8px 10px;font-size:12px}}
+
+/* 印刷の面付け・レイアウト */
+.impose-preview{width:min(100%,390px);margin:auto;border:1px solid #dceae2;border-radius:12px;background:#f4faf6;padding:16px;min-height:70px}
+.impose-preview svg{background:#fff;border:1px solid #e5ece8;box-shadow:0 8px 18px #aacabd44}
+#imposeItemCustom[hidden],#imposeSheetCustom[hidden]{display:none}
+#imposeItemCustom:not([hidden]),#imposeSheetCustom:not([hidden]){display:flex;flex-direction:column;gap:8px}
