@@ -18,3 +18,11 @@
 table tbody tr:nth-child(even){background:#f9fcfa}
 .table-scroll th{white-space:nowrap}.diagram-paper{max-height:245px;min-height:100px}
 @media(max-width:600px){.table-scroll{margin-inline:-4px}.table-scroll table{min-width:490px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Photo aspect ratio and crop calculator */
+.preset-controls{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 26px}
+.preset-action{border:1px solid #a8cec2;border-radius:9px;background:#fff;color:#22695e;padding:10px 14px;font:inherit;font-size:13px;cursor:pointer}
+.preset-action:hover{background:#e6f5ee}.preset-action:focus-visible{outline:2px solid #118b78;outline-offset:3px}
+#cropCustomSize[hidden]{display:none}#cropCustomSize:not([hidden]){display:flex;flex-direction:column;gap:8px}
+.result b{overflow-wrap:anywhere}
+@media(max-width:600px){.preset-controls{gap:7px}.preset-action{padding:8px 10px;font-size:12px}}

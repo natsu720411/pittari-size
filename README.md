@@ -27,3 +27,13 @@
 - コピー倍率・A判とB判の違いのガイドを追加
 - JIS規格寸法の参考: https://k-cr.jp/support/spec/paper/ および https://www.aik.co.jp/02support/03nyukou/06kamiwari.html
 - Search Consoleの無料公式画面だけでも運用可能。Windsor.aiは必須ではない
+
+## 写真の縦横比とトリミング（2026-11-22）
+
+- `/tools/aspect-ratio/` 画像ピクセル数の最大公約数から縦横比を計算
+- `/tools/photo-crop/` L判・2L判・KG判などの中央配置のトリミング率または余白を概算
+- `/guides/photo-aspect-ratios/` 比率の考え方
+- `/guides/l-print-crop/` L判へ4:3/3:2/16:9を印刷する場合の計算例
+
+いずれもブラウザ内で計算し、画像ファイルをアップロードしない。
+中央配置の幾何学的な見積もりのため、印刷サービス固有の仕上げと差が生じる。
