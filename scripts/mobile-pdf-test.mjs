@@ -114,6 +114,10 @@ try{
  assert.equal(await recent.isVisible(),true,"recently visited pages shown on homepage");
  assert.ok((await recent.locator('a[href="/paper/a4/"]').count())===1,"recent history includes A4");
  pass("local-only recently viewed shortcuts on homepage");
+ assert.equal(await page.locator('.print-start-choices a[href="/tools/print-pdf/"]').count(),1);
+ assert.equal(await page.locator('.print-start-choices a[href="/tools/label-print/"]').count(),1);
+ pass("homepage routes first-time visitors directly to both guided PDF tools");
+
 
  await page.goto(origin+"/tools/actual-size/",{waitUntil:"load"});
  const measured=await pdfFromDownload(page,"#calibrationPdf","pittari-test-100mm.pdf");
@@ -129,6 +133,13 @@ try{
  await page.goto(origin+"/tools/print-pdf/",{waitUntil:"load"});
  const defaultCount=await page.locator("#pdfSummary").textContent();
  assert.ok(defaultCount.includes("10枚"),"A4 10 business cards");
+ await page.locator("#printGuideCheck").click();
+ assert.ok((await page.locator("#printGuideStatus").textContent()).includes("確認OK"),"PDF preflight passes");
+ assert.ok((await page.locator("#printGuideStatus").textContent()).includes("番号付きガイド"),"no-image PDF use case explained");
+ await page.locator('[data-guide-focus="pdfPaper"]').click();
+ assert.equal(await page.evaluate(()=>document.activeElement?.id),"pdfPaper");
+ pass("beginner PDF guide focuses correct field and preflight explains no-photo output");
+
  await page.locator('[data-print-preset="l"]').click();
  assert.ok((await page.locator("#pdfSummary").textContent()).includes("4枚"),"A4 L photo preset 4 per sheet");
  await page.locator('[data-print-preset="card"]').click();
@@ -226,6 +237,18 @@ try{
  // Extended smoke tests: local label PDF, photo cropping, saved presets, image sharing.
  await page.goto(origin+"/tools/label-print/",{waitUntil:"load"});
  assert.ok((await page.locator("#labelSummary").textContent()).includes("24枚"),"24-label default layout");
+ await page.locator("#printGuideCheck").click();
+ assert.ok((await page.locator("#printGuideStatus").textContent()).includes("確認OK"),"label guide preflight passes");
+ await page.locator('[data-guide-action="label-csv"]').click();
+ assert.equal(await page.locator("#labelCsvEnabled").isChecked(),true);
+ assert.equal(await page.evaluate(()=>document.activeElement?.id),"labelCsvText");
+ await page.locator("#labelCsvEnabled").uncheck();
+ await page.locator('[data-guide-action="label-sheet"]').click();
+ assert.equal(await page.locator("#labelSheetMode").inputValue(),"custom");
+ assert.equal(await page.evaluate(()=>document.activeElement?.id),"labelCols");
+ await page.locator("#labelSheetMode").selectOption("auto");
+ pass("label guide, CSV shortcut, and commercial sheet shortcut preserve existing settings");
+
  await page.waitForFunction(()=>!!navigator.serviceWorker.controller,undefined,{timeout:15000});
  await context.setOffline(true);
  await page.reload({waitUntil:"domcontentloaded"});

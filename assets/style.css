@@ -194,3 +194,19 @@ fieldset.print-adjust:disabled{opacity:.68}
 }
 .home-page .home-recent[hidden]{display:none}
 .home-page .home-recent .card{min-height:88px}
+
+/* Simple, optional guidance for print tools. All existing detailed form controls remain available. */
+.print-guide{border:1px solid #b6d7c7;border-radius:16px;background:#f0f9f4;padding:18px 20px;margin:18px 0 25px}
+.print-guide h2{font-size:20px;line-height:1.5;margin:0 0 5px}
+.print-guide>p{font-size:13px;line-height:1.8;color:#38594e;margin:5px 0 12px}
+.print-guide-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.print-guide-steps button{min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start;min-height:94px;text-align:left;border:1px solid #b4d8c5;border-radius:11px;background:#fff;padding:13px;cursor:pointer;color:#203749;font:inherit}
+.print-guide-steps button:hover,.print-guide-steps button:focus-visible{border-color:#0b7466;background:#f8fffb}
+.print-guide-steps b{font-size:15px;line-height:1.4;color:#145e4b}
+.print-guide-steps span{font-size:12px;line-height:1.65;color:#4b655b}
+.print-guide-check,.print-guide-shortcuts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.print-guide-check p{font-size:13px;line-height:1.6;margin:0;flex:1 1 260px;overflow-wrap:anywhere}
+.print-guide-shortcuts button,.print-guide-check button{min-height:44px}
+.print-guide .print-guide-tip{margin:12px 0 0}
+.print-guide a{color:#0b6659;text-decoration:underline;text-underline-offset:2px;font-weight:750}
+@media(max-width:600px){.print-guide{padding:14px}.print-guide-steps{grid-template-columns:1fr;gap:7px}.print-guide-steps button{min-height:58px;padding:10px 12px}.print-guide-shortcuts button{width:100%}}
