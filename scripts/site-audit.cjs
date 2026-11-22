@@ -46,6 +46,7 @@ for(const u of urls){
  for(const m of html.matchAll(/href="(\/[^"#?]*)(?:[?#][^"]*)?"/g)){
   const dest=m[1];links++;
   if(dest==="/favicon.svg"||dest==="/robots.txt"||dest==="/sitemap.xml")continue;
+  if(dest==="/manifest.webmanifest"){if(!fs.existsSync(path.join(root,"manifest.webmanifest")))errors.push("Missing manifest");continue}
   if(dest.startsWith("/assets/")){if(!fs.existsSync(path.join(root,dest)))errors.push("Missing asset "+dest);continue}
   if(!uniqueUrls.has(origin+dest))errors.push("Broken sitemap link "+route+" -> "+dest);
  }
