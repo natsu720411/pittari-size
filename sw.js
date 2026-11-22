@@ -1,4 +1,4 @@
-const CACHE="pittari-shell-20261122-2";
+const CACHE="pittari-shell-20261122-3";
 const CORE=["/","/paper/","/envelope/","/tools/","/tools/units/","/tools/dpi/","/tools/fold-simulator/","/assets/app.js","/assets/fold-simulator.js","/assets/style.css","/favicon.svg","/offline/"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(Promise.all([

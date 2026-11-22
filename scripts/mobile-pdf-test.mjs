@@ -70,7 +70,7 @@ try{
  page.on("pageerror",err=>{console.error("PAGE ERROR:",err.message)});
  for(const width of [390,320]){
   await page.setViewportSize({width,height:844});
-  for(const route of ["/","/paper/a4/","/tools/bleed/","/tools/print-pdf/","/photo/l/"]){
+  for(const route of ["/","/paper/a4/","/tools/bleed/","/tools/print-pdf/","/tools/label-print/","/photo/l/"]){
    await page.goto(origin+route,{waitUntil:"load"});
    const nav=page.locator(".mobile-tab-nav");
    await nav.waitFor({state:"visible",timeout:8000});
@@ -183,6 +183,64 @@ try{
  const svg=await page.locator("#overlayGraphic").innerHTML();
  assert.ok(svg.includes("rect"));
  pass("overlay changes on selection");
+ 
+ // Extended smoke tests: local label PDF, photo cropping, saved presets, image sharing.
+ await page.goto(origin+"/tools/label-print/",{waitUntil:"load"});
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("24枚"),"24-label default layout");
+ await page.locator('[data-label-preset="circle35"]').click();
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("35枚"),"35 circular labels");
+ await page.locator('[data-label-preset="rect24"]').click();
+ await page.locator("#labelCount").fill("26");
+ const labels=await pdfFromDownload(page,"#labelDownload","pittari-labels.pdf");
+ assert.equal(labels.pdf.getPageCount(),2,"26 labels require two A4 pages");
+ for(const p of labels.pdf.getPages()){
+  const size=p.getSize();near(size.width,210*72/25.4,.02,"Label PDF A4 width");near(size.height,297*72/25.4,.02,"Label PDF A4 height");
+ }
+ pass("label presets 24/35 and two-page A4 label PDF");
+ await page.goto(origin+"/tools/print-pdf/",{waitUntil:"load"});
+ const sample=(r,g,b)=>{
+  const data=Buffer.alloc(50*50*4);
+  for(let i=0;i<50*50;i++){data[i*4]=r;data[i*4+1]=g;data[i*4+2]=b;data[i*4+3]=255}
+  return jpeg.encode({data,width:50,height:50},90).data;
+ };
+ await page.locator("#pdfImage").setInputFiles([{name:"red.jpg",mimeType:"image/jpeg",buffer:sample(220,20,30)}]);
+ await page.waitForFunction(()=>!document.getElementById("pdfPhotoAdjust").disabled);
+ const initialPpi=await page.locator("#pdfPpiStatus").textContent();
+ assert.ok(initialPpi.includes("PPI"),"PPI warning appears for selected file");
+ await page.locator("#pdfZoom").evaluate(el=>{el.value="150";el.dispatchEvent(new Event("input",{bubbles:true}))});
+ assert.equal(await page.locator("#pdfZoomOutput").textContent(),"150%");
+ const scaledPpi=await page.locator("#pdfPpiStatus").textContent();
+ assert.notEqual(scaledPpi,initialPpi,"zoom impacts printed pixel density");
+ pass("photo crop zoom 150%, PPI adjusts, controls enabled");
+ await page.locator("#pdfSaveName").fill("自動テスト設定");
+ await page.locator("#pdfSavePreset").click();
+ assert.ok((await page.locator("#pdfPresetStatus").textContent()).includes("保存しました"));
+ await page.locator("#pdfGap").fill("7");
+ await page.locator("#pdfLoadPreset").click();
+ assert.equal(await page.locator("#pdfGap").inputValue(),"2");
+ await page.locator("#pdfDeletePreset").click();
+ pass("print setup local save, reload and delete");
+ const [previewPng]=await Promise.all([page.waitForEvent("download"),page.locator("#pdfPreviewPng").click()]);
+ assert.equal(previewPng.suggestedFilename(),"pittari-preview.png");
+ pass("print preview PNG file download");
+ await page.locator("#pdfShareUrl").click();
+ assert.ok((await page.locator("#pdfPresetStatus").textContent()).includes("URL"),"share URL generated or copied");
+ pass("print setup shareable URL");
+ await page.goto(origin+"/tools/overlay/?ov1=a3&ov2=a5&ov3=none",{waitUntil:"load"});
+ assert.equal(await page.locator("#ov1").inputValue(),"a3");
+ assert.equal(await page.locator("#ov2").inputValue(),"a5");
+ const [overlayPng]=await Promise.all([page.waitForEvent("download"),page.locator("#resultImage").click()]);
+ assert.equal(overlayPng.suggestedFilename(),"pittari-paper-comparison.png");
+ pass("overlay URL parameters and PNG export");
+ await page.goto(origin+"/tools/fold-simulator/?paper=a4&method=third",{waitUntil:"load"});
+ const [foldPng]=await Promise.all([page.waitForEvent("download"),page.locator("#resultImage").click()]);
+ assert.equal(foldPng.suggestedFilename(),"pittari-envelope-fold.png");
+ pass("folding SVG diagram PNG export");
+ await page.goto(origin+"/tools/label-print/",{waitUntil:"load"});
+ assert.equal(await page.locator("#labelPreview").getAttribute("aria-label"),"A4のラベル配置プレビュー");
+ assert.equal(await page.locator("#labelText").getAttribute("maxlength"),"100");
+ pass("label input accessible naming and length limit");
+
  console.log("SUCCESS all "+passed+" browser/PDF tests passed");
 }catch(error){
  console.error("FAIL browser PDF mobile verification: "+error.stack);

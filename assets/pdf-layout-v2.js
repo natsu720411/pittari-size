@@ -50,8 +50,10 @@ function draw(ctx,settings,page,illustrate){
   const img=imageList.length?imageList[index%imageList.length]:null;
   if(img){
    const scale=Math.max(settings.w/img.naturalWidth,settings.h/img.naturalHeight);
-   const sw=settings.w/scale,sh=settings.h/scale;
-   ctx.drawImage(img,(img.naturalWidth-sw)/2,(img.naturalHeight-sh)/2,sw,sh,x,y,settings.w,settings.h);
+   const edit=window.PittariPrintEditor?.getEdit(index%imageList.length)||{zoom:1,panX:0,panY:0};
+   const zoom=Math.max(1,Math.min(3,edit.zoom)),sw=settings.w/scale/zoom,sh=settings.h/scale/zoom;
+   const sx=Math.max(0,img.naturalWidth-sw)*(.5+.5*edit.panX),sy=Math.max(0,img.naturalHeight-sh)*(.5+.5*edit.panY);
+   ctx.drawImage(img,sx,sy,sw,sh,x,y,settings.w,settings.h);
   }else{
    ctx.fillStyle="#eff7f2";ctx.fillRect(x,y,settings.w,settings.h);
    ctx.fillStyle="#477365";ctx.textAlign="center";
@@ -88,6 +90,7 @@ $("pdfImage").addEventListener("change",async()=>{
   const images=await Promise.all(selected.map(decodeImage));
   if(current!==imageVersion)return;
   imageList.push(...images);
+  window.PittariPrintEditor?.onImages(images);
   if(images.length)$("pdfCount").value=images.length;
   filesStatus.textContent=images.length?images.length+"件の画像を読み込みました。画像は送信していません。":"画像未選択：番号付きのガイドを生成します。";
  }catch(e){if(current!==imageVersion)return;filesStatus.textContent=e.message}
@@ -146,5 +149,6 @@ for(const btn of document.querySelectorAll("[data-print-preset]"))btn.addEventLi
  $("pdfGap").value=id==="card"?2:id==="l"?3:0;$("pdfCount").value=id==="card"?10:id==="l"?4:2;
  renderPreview();
 });
+window.PittariPrintCore={layout,slots,renderPreview,getImages:()=>imageList,getPreview:()=>preview};
 renderPreview();
 })();
