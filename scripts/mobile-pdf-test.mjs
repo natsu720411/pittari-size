@@ -78,7 +78,9 @@ try{
    const metrics=await page.evaluate(()=>({screen:innerWidth,document:document.documentElement.scrollWidth,navVisible:getComputedStyle(document.querySelector(".mobile-tab-nav")).display,viewport:document.documentElement.clientWidth}));
    assert.ok(metrics.document<=metrics.screen+2,"Horizontal overflow "+width+" "+route+": "+JSON.stringify(metrics));
    const box=await nav.boundingBox();
-   assert.ok(box&&box.y>660&&box.y<844,"Mobile nav positioned at viewport bottom: "+route);
+   const vd=await page.evaluate(()=>({height:innerHeight,width:innerWidth,position:getComputedStyle(document.querySelector(".mobile-tab-nav")).position}));
+   console.log("NAV "+width+" "+route+" "+JSON.stringify({box,vd}));
+   assert.ok(box&&Math.abs(box.y+box.height-vd.height)<5&&box.height<160,"Mobile nav positioned at bottom: "+route+" "+JSON.stringify({box,vd}));
    pass("mobile "+width+"px "+route+" no overflow / six tabs");
   }
  }
