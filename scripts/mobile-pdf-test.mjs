@@ -76,7 +76,7 @@ try{
    await nav.waitFor({state:"visible",timeout:8000});
    assert.equal(await nav.locator(".mobile-tab").count(),6);
    const metrics=await page.evaluate(()=>({screen:innerWidth,document:document.documentElement.scrollWidth,navVisible:getComputedStyle(document.querySelector(".mobile-tab-nav")).display,viewport:document.documentElement.clientWidth}));
-   assert.ok(metrics.document<=metrics.screen+2,"Horizontal overflow "+width+" "+route+": "+JSON.stringify(metrics));
+   assert.ok(metrics.screen<=width+1&&metrics.document<=width+2,"Horizontal overflow "+width+" "+route+": "+JSON.stringify(metrics));
    const box=await nav.boundingBox();
    const vd=await page.evaluate(()=>({height:innerHeight,width:innerWidth,position:getComputedStyle(document.querySelector(".mobile-tab-nav")).position}));
    console.log("NAV "+width+" "+route+" "+JSON.stringify({box,vd}));

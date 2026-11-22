@@ -118,3 +118,10 @@ table tbody tr:nth-child(even){background:#f9fcfa}
 .personal-saved-link{display:block;padding:12px;background:white;color:var(--teal);border:1px solid var(--line);border-radius:11px;font-weight:750;overflow-wrap:anywhere}
 .personal-saved-link:hover{background:#f0f9f4}
 @media(max-width:600px){.overlay-visual{padding:10px}.personal-list{grid-template-columns:1fr}.favorite-toggle{min-height:44px}}
+
+/* prevent native file inputs and grid min-content from widening narrow mobile viewports */
+.tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tool-grid > *,.tool-form,.result{min-width:0}
+.tool-form input,.tool-form select{box-sizing:border-box;max-width:100%;min-width:0;width:100%}
+.tool-form input[type="file"]{display:block;width:100%;max-width:100%;min-width:0;overflow:hidden;font-size:13px}
+@media(max-width:600px){.tool-grid{grid-template-columns:minmax(0,1fr)}}
