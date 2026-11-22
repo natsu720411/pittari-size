@@ -187,3 +187,10 @@ fieldset.print-adjust:disabled{opacity:.68}
 .slot-option.slot-used{background:#edf0ef;border-color:#c5cfc9;color:#65756d}
 .slot-option:focus-within{outline:3px solid #0b705d;outline-offset:2px}
 #labelSlotsStatus{font-weight:700}
+
+/* Home-only below-the-fold rendering optimization; hero and first tool grid remain fully rendered. */
+@supports (content-visibility:auto){
+  .home-page main > section.section:nth-of-type(n+4){content-visibility:auto;contain-intrinsic-size:auto 300px}
+}
+.home-page .home-recent[hidden]{display:none}
+.home-page .home-recent .card{min-height:88px}

@@ -93,6 +93,28 @@ try{
  await page.locator("#globalSearchInput").fill("A4");
  await page.locator(".global-search-item").first().waitFor({state:"visible"});
  pass("mobile search, A4 results, contextual tools");
+ await page.goto(origin+"/",{waitUntil:"load"});
+ assert.equal(await page.locator('script[src="/assets/home.js"]').count(),1);
+ assert.equal(await page.locator('script[src="/assets/app.js"]').count(),0);
+ await page.locator("#siteSearch").fill("ラベル");
+ assert.ok((await page.locator("#suggest a").count())>=1,"home search shows suggestions");
+ const homeHints=await page.locator("#suggest").textContent();
+ assert.ok(homeHints.includes("ラベル"),"87 page search index available in home bundle");
+ await page.locator("#siteSearch").fill("");
+ await page.locator("h1").click();
+ await page.keyboard.press("/");
+ await page.locator(".global-search-dialog[open]").waitFor({state:"visible"});
+ await page.locator("#globalSearchInput").fill("CSV");
+ assert.ok((await page.locator("#globalSearchResults a").count())>0,"global search finds CSV guide");
+ await page.locator(".global-search-close").click();
+ pass("lightweight homepage JS keeps search suggestions, global search and keyboard shortcut");
+ await page.goto(origin+"/paper/a4/",{waitUntil:"load"});
+ await page.goto(origin+"/",{waitUntil:"load"});
+ const recent=page.locator("#homeRecent");
+ assert.equal(await recent.isVisible(),true,"recently visited pages shown on homepage");
+ assert.ok((await recent.locator('a[href="/paper/a4/"]').count())===1,"recent history includes A4");
+ pass("local-only recently viewed shortcuts on homepage");
+
  await page.goto(origin+"/tools/actual-size/",{waitUntil:"load"});
  const measured=await pdfFromDownload(page,"#calibrationPdf","pittari-test-100mm.pdf");
  assert.equal(measured.pdf.getPageCount(),1);
@@ -181,6 +203,15 @@ try{
  assert.ok((await page.locator("h1").textContent()).length>0,"offline basic conversion available");
  await context.setOffline(false);
  pass("PWA manifest, service worker and offline precached calculator");
+ await page.goto(origin+"/",{waitUntil:"load"});
+ await context.setOffline(true);
+ await page.reload({waitUntil:"domcontentloaded"});
+ assert.equal(await page.locator("#siteSearch").count(),1,"homepage available offline");
+ await page.locator("#siteSearch").fill("A4");
+ assert.ok((await page.locator("#suggest a").count())>=1,"offline homepage search results work");
+ await context.setOffline(false);
+ pass("offline home loads lightweight search and shows suggestions");
+
 
  await page.goto(origin+"/tools/bleed/",{waitUntil:"load"});
  assert.ok((await page.locator("#bleedResult").textContent()).includes("97.0×61.0mm"));

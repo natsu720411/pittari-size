@@ -54,6 +54,20 @@ for(const u of urls){
  for(const m of scriptTags)if(!fs.existsSync(path.join(root,m[1])))errors.push("Missing script "+route+" "+m[1]);
 }
 if(pages!==allHtml.length)errors.push("HTML count mismatch "+pages+" vs "+allHtml.length);
+// Keep homepage's lightweight search index in sync with the full-site index.
+try{
+ const full=fs.readFileSync(path.join(root,"assets/app.js"),"utf8");
+ const home=fs.readFileSync(path.join(root,"assets/home.js"),"utf8");
+ const a=full.indexOf(",search="),b=full.indexOf(";const g=id=>",a);
+ const c=home.indexOf("const SEARCH_INDEX="),d=home.indexOf(";\nconst normalize=",c);
+ if(a<0||b<0||c<0||d<0)throw Error("Search index format changed");
+ const big=JSON.parse(full.slice(a+8,b)),small=JSON.parse(home.slice(c+"const SEARCH_INDEX=".length,d));
+ if(JSON.stringify(big)!==JSON.stringify(small))errors.push("Homepage search index differs from all-page search index");
+ if(big.length!==urls.length)errors.push("Search index entry count differs from sitemap");
+ const seen=new Set(small.map(item=>item.url));
+ if(seen.size!==small.length||urls.some(u=>!seen.has(u.slice(origin.length))))errors.push("Homepage search URLs differ from sitemap");
+ if(!fs.readFileSync(path.join(root,"index.html"),"utf8").includes('src="/assets/home.js"'))errors.push("Homepage light script not active");
+}catch(e){errors.push("Homepage search index audit: "+e.message)}
 const jsfiles=fs.readdirSync(path.join(root,"assets")).filter(n=>n.endsWith(".js"));
 for(const file of jsfiles){
  try{new vm.Script(fs.readFileSync(path.join(root,"assets",file),"utf8"),{filename:file})}

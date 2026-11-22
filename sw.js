@@ -1,5 +1,5 @@
-const CACHE="pittari-shell-20261122-v5";
-const CORE=["/","/paper/","/envelope/","/tools/","/tools/units/","/tools/dpi/","/tools/fold-simulator/","/tools/label-print/","/tools/print-pdf/","/assets/app.js","/assets/label-print.js","/assets/pdf-vector.js","/assets/pdf-layout-v2.js","/assets/print-editor.js","/assets/fold-simulator.js","/assets/style.css","/favicon.svg","/offline/"];
+const CACHE="pittari-shell-20261122-v6";
+const CORE=["/","/paper/","/envelope/","/tools/","/tools/units/","/tools/dpi/","/tools/fold-simulator/","/tools/label-print/","/tools/print-pdf/","/assets/app.js","/assets/home.js","/assets/label-print.js","/assets/pdf-vector.js","/assets/pdf-layout-v2.js","/assets/print-editor.js","/assets/fold-simulator.js","/assets/style.css","/favicon.svg","/offline/"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
