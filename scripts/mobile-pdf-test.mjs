@@ -10,7 +10,7 @@ import jpeg from "jpeg-js";
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const out=path.join(root,"test-artifacts");
 fs.mkdirSync(out,{recursive:true});
-const mime={".html":"text/html; charset=utf-8",".js":"application/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".svg":"image/svg+xml",".xml":"application/xml",".ico":"image/x-icon"};
+const mime={".html":"text/html; charset=utf-8",".js":"application/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".svg":"image/svg+xml",".xml":"application/xml",".ico":"image/x-icon",".webmanifest":"application/manifest+json"};
 const server=createServer((req,res)=>{
  try{
   const pathname=decodeURIComponent(new URL(req.url,"http://localhost").pathname);
@@ -106,7 +106,22 @@ try{
  pass("100mm calibration PDF MediaBox, 300PPI raster, physical line "+lineMm.toFixed(2)+"mm");
  await page.goto(origin+"/tools/print-pdf/",{waitUntil:"load"});
  const defaultCount=await page.locator("#pdfSummary").textContent();
- assert.ok(defaultCount.includes("10個"),"A4 10 business cards");
+ assert.ok(defaultCount.includes("10枚"),"A4 10 business cards");
+ await page.locator('[data-print-preset="l"]').click();
+ assert.ok((await page.locator("#pdfSummary").textContent()).includes("4枚"),"A4 L photo preset 4 per sheet");
+ await page.locator('[data-print-preset="card"]').click();
+ assert.ok((await page.locator("#pdfSummary").textContent()).includes("10枚"),"A4 card preset restored");
+ const makeJpg=(r,g,b)=>{
+  const data=Buffer.alloc(20*20*4);
+  for(let i=0;i<20*20;i++){data[i*4]=r;data[i*4+1]=g;data[i*4+2]=b;data[i*4+3]=255}
+  return jpeg.encode({data,width:20,height:20},85).data;
+ };
+ await page.locator("#pdfImage").setInputFiles([
+  {name:"red.jpg",mimeType:"image/jpeg",buffer:makeJpg(230,35,30)},
+  {name:"blue.jpg",mimeType:"image/jpeg",buffer:makeJpg(30,40,225)}
+ ]);
+ await page.waitForFunction(()=>document.getElementById("pdfFileStatus").textContent.includes("2件"));
+ pass("preset templates and multiple local image upload");
  await page.locator("#pdfCount").fill("13");
  const layout=await pdfFromDownload(page,"#pdfCreate","pittari-print.pdf");
  assert.equal(layout.pdf.getPageCount(),2,"13 cards need 2 pages");
@@ -116,6 +131,49 @@ try{
   near(pgSize.height,297*72/25.4,.02,"Print PDF height");
  }
  pass("multi-page print layout PDF 13 cards => 2 A4 sheets");
+ function jpegStreams(buf){
+  const marker=Buffer.from("/Filter /DCTDecode /Length "),chunks=[];let offset=0;
+  while(true){
+   const pos=buf.indexOf(marker,offset);if(pos<0)break;
+   const len=Number(buf.subarray(pos,pos+140).toString("latin1").match(/\/Length (\d+)/)?.[1]);
+   const first=buf.indexOf(Buffer.from("stream\n"),pos);
+   assert.ok(first>0&&len>100,"Image stream has bytes");
+   chunks.push(buf.subarray(first+7,first+7+len));offset=first+7+len;
+  }
+  return chunks;
+ }
+ const raster=jpegStreams(layout.buffer);
+ assert.equal(raster.length,2,"each PDF page owns a separate raster image");
+ const bitmaps=raster.map(data=>jpeg.decode(data,{useTArray:true,tolerantDecoding:true}));
+ function pixel(img,mmX,mmY){
+  const x=Math.round(mmX*img.width/210),y=Math.round(mmY*img.height/297);
+  const at=4*(y*img.width+x);return [img.data[at],img.data[at+1],img.data[at+2]];
+ }
+ const redSlot=pixel(bitmaps[0],50,34),blueSlot=pixel(bitmaps[0],148,34);
+ assert.ok(redSlot[0]>150&&redSlot[1]<120&&blueSlot[2]>145&&blueSlot[0]<140,
+  "different uploaded images occupy different PDF slots");
+ const firstFull=pixel(bitmaps[0],148,90),lastBlank=pixel(bitmaps[1],148,90);
+ assert.ok(firstFull.some(v=>v<160),"position is populated in full first page");
+ assert.ok(lastBlank.every(v=>v>230),"unused slot on final page stays white");
+ pass("multi-image output and partial last PDF page contains no extra image frames");
+ await page.goto(origin+"/tools/fold-simulator/?paper=a4&method=third",{waitUntil:"load"});
+ assert.ok((await page.locator("#foldResult").textContent()).includes("99 × 210mm"),"A4 folded into 99×210mm");
+ assert.ok((await page.locator("#foldMatches").textContent()).includes("長形3号"),"長形3号 appears as candidate");
+ await page.locator("#foldPaper").selectOption("b5");
+ await page.locator("#foldMethod").selectOption("long4");
+ assert.ok((await page.locator("#foldResult").textContent()).includes("64.25 × 182mm"),"B5 long fourfold size");
+ pass("folding geometry and envelope candidates");
+ await page.goto(origin+"/",{waitUntil:"load"});
+ await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,undefined,{timeout:15000});
+ const manifest=await page.evaluate(async()=>await (await fetch("/manifest.webmanifest")).json());
+ assert.equal(manifest.start_url,"/");
+ assert.equal(manifest.display,"standalone");
+ await context.setOffline(true);
+ await page.goto(origin+"/tools/units/",{waitUntil:"domcontentloaded"});
+ assert.ok((await page.locator("h1").textContent()).length>0,"offline basic conversion available");
+ await context.setOffline(false);
+ pass("PWA manifest, service worker and offline precached calculator");
+
  await page.goto(origin+"/tools/bleed/",{waitUntil:"load"});
  assert.ok((await page.locator("#bleedResult").textContent()).includes("97.0×61.0mm"));
  pass("bleed card 3mm 97x61mm");

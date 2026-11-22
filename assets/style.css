@@ -125,3 +125,15 @@ table tbody tr:nth-child(even){background:#f9fcfa}
 .tool-form input,.tool-form select{box-sizing:border-box;max-width:100%;min-width:0;width:100%}
 .tool-form input[type="file"]{display:block;width:100%;max-width:100%;min-width:0;overflow:hidden;font-size:13px}
 @media(max-width:600px){.tool-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Printable PDF preview and folding visualizer */
+.print-presets{padding:16px 18px;background:#edf8f2;border-radius:14px;border:1px solid #cde6db;margin:18px 0}
+.print-preview-area{margin-top:15px}.print-preview-area canvas{display:block;width:min(100%,350px);height:auto;border:1px solid #bdd7ca;background:#fff;border-radius:5px;box-shadow:0 6px 20px #12432b25}
+.fold-diagram{max-width:680px;margin:15px auto;padding:10px;background:white;border-radius:14px;border:1px solid var(--line)}
+.fold-diagram svg{display:block;width:100%;height:auto}
+.fold-matches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.fold-match{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;min-width:0}
+.fold-match a{display:block;font-weight:800;color:var(--teal);font-size:14px}
+.fold-match strong{font-size:12px;display:block;margin:6px 0}.fit-yes{color:#137b5d}.fit-no{color:#967441}
+.fold-match p{font-size:12px;color:var(--muted);margin:0}
+@media(max-width:600px){.fold-matches{grid-template-columns:1fr}.print-presets{padding:12px}}

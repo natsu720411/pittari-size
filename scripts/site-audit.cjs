@@ -16,7 +16,9 @@ function walk(dir){
  }
  return result;
 }
-const allHtml=walk(root);
+const allHtml=walk(root).filter(file=>!file.endsWith(path.join("offline","index.html")));
+const offlineFile=path.join(root,"offline","index.html");
+if(!fs.existsSync(offlineFile)||!fs.readFileSync(offlineFile,"utf8").includes("noindex,nofollow"))errors.push("Offline fallback must exist and be noindex");
 for(const u of urls){
  if(!u.startsWith(origin+"/")){errors.push("Foreign sitemap URL "+u);continue}
  const route=u.slice(origin.length);

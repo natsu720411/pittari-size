@@ -1,0 +1,46 @@
+{
+  "name": "ぴったりサイズ｜用紙・封筒・印刷",
+  "short_name": "ぴったりサイズ",
+  "description": "用紙と封筒のサイズ早見表・無料印刷ツール",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#118b78",
+  "background_color": "#f6f9f6",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "用紙サイズ",
+      "url": "/paper/"
+    },
+    {
+      "name": "便利ツール",
+      "url": "/tools/"
+    },
+    {
+      "name": "封筒の折り方",
+      "url": "/tools/fold-simulator/"
+    }
+  ]
+}

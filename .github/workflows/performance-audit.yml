@@ -1,0 +1,38 @@
+name: Mobile Lighthouse audit
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Lighthouse
+        run: npm install --no-save --no-package-lock lighthouse@12.8.2
+      - name: Measure performance, accessibility and SEO
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/pittari-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          sleep 2
+          curl --fail --silent http://127.0.0.1:8765/ > /dev/null
+          npx lighthouse http://127.0.0.1:8765/ --chrome-flags="--headless --no-sandbox --disable-gpu" --only-categories=performance,seo,accessibility --output=json --output-path=reports/home.json --quiet
+          npx lighthouse http://127.0.0.1:8765/tools/print-pdf/ --chrome-flags="--headless --no-sandbox --disable-gpu" --only-categories=performance,seo,accessibility --output=json --output-path=reports/pdf.json --quiet
+          node scripts/lighthouse-summary.cjs reports/home.json reports/pdf.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-mobile-reports
+          path: reports/*.json
+          if-no-files-found: ignore
+          retention-days: 7
