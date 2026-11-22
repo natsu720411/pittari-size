@@ -170,3 +170,9 @@ fieldset.print-adjust:disabled{opacity:.68}
 .label-custom-grid:disabled{opacity:.6}
 #labelCsvStatus,#pdfDraftStatus{font-size:12px;overflow-wrap:anywhere}
 @media(max-width:600px){.print-preview-nav button{min-height:44px}}
+
+/* Used-sheet label printing and CSV template actions */
+.label-actions{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.label-actions button{min-height:44px}
+.tool-form .check-label{display:flex;align-items:center;gap:9px;min-height:44px;font-weight:700}
+.tool-form .check-label input[type=checkbox]{width:19px;height:19px;flex:none}

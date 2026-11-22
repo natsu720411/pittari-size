@@ -226,6 +226,28 @@ try{
  assert.equal(custom.pdf.getPageCount(),1);
  assert.ok(vectorStreams(custom.buffer)[0].includes(" re S Q"));
  pass("commercial label sheet custom rows, cols, pitches and alignment offset");
+ await page.locator("#labelText").fill("TEST");
+ await page.locator("#labelStartSlot").fill("4");
+ await page.locator("#labelCount").fill("4");
+ await page.locator("#labelDrawFrame").uncheck();
+ const summary=await page.locator("#labelSummary").textContent();
+ assert.ok(summary.includes("開始位置：4番"),"used label sheet begins at slot 4");
+ assert.ok(summary.includes("PDF 2ページ"),"used slot moves last print to second page");
+ const usedSheet=await pdfFromDownload(page,"#labelDownload","pittari-labels.pdf");
+ assert.equal(usedSheet.pdf.getPageCount(),2,"skip 3 then print 4 items on 6-up page = 2 pages");
+ const usedContent=vectorStreams(usedSheet.buffer);
+ assert.equal(usedContent.length,2);
+ assert.equal((usedContent[0].match(/ Tj ET Q/g)||[]).length,3,"first page prints only slots 4,5,6");
+ assert.equal((usedContent[1].match(/ Tj ET Q/g)||[]).length,1,"second page prints only one remaining item");
+ assert.ok(usedContent.every(c=>!c.includes(" re S Q")),"cut borders are omitted on commercial sheets");
+ pass("partially used label sheets skip slots with blank output and optional no-frame PDF");
+ await page.locator("#labelStartSlot").fill("1");
+ await page.locator("#labelCount").fill("6");
+ await page.locator("#labelDrawFrame").check();
+ const [sampleCsv]=await Promise.all([page.waitForEvent("download"),page.locator("#labelCsvSample").click()]);
+ assert.equal(sampleCsv.suggestedFilename(),"label-sample.csv");
+ pass("downloadable UTF-8 sample CSV");
+
  await page.locator("#labelCsvText").fill("名前,番号\n田中,001\n佐藤,002\n鈴木,003");
  await page.locator("#labelCsvEnabled").check();
  assert.ok((await page.locator("#labelSummary").textContent()).includes("最終ページ：3枚"),"3 CSV rows excluding header");
@@ -237,6 +259,10 @@ try{
  await page.locator("#labelCsvText").fill('名前,備考\n"佐藤,営業",003\n"田中",004');
  assert.ok((await page.locator("#labelSummary").textContent()).includes("最終ページ：2枚"),"quoted CSV comma parsed correctly");
  pass("quoted CSV fields parsed");
+ await page.locator("#labelCsvClear").click();
+ assert.equal(await page.locator("#labelCsvEnabled").isChecked(),false);
+ assert.equal(await page.locator("#labelCsvText").inputValue(),"");
+ pass("CSV input clearing without persisting personal rows");
  await page.goto(origin+"/tools/print-pdf/",{waitUntil:"load"});
  const sample=(r,g,b)=>{
   const data=Buffer.alloc(50*50*4);

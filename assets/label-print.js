@@ -37,6 +37,7 @@ function config(){
  const shape=$("labelShape").value,w=number("labelWidth"),h=shape==="circle"?w:number("labelHeight");
  const margin=number("labelMargin"),gap=number("labelGap"),font=number("labelFont");
  const csv=csvItems(),count=csv?csv.length:number("labelCount"),custom=$("labelSheetMode").value==="custom";
+ const startSlot=number("labelStartSlot"),drawFrame=$("labelDrawFrame").checked;
  if(![w,h,margin,gap,font,count].every(Number.isFinite)||w<10||w>190||h<10||h>277||margin<0||margin>50||gap<0||gap>50||font<1||font>18||!Number.isInteger(count)||count<1||count>300)throw Error("寸法・枚数・文字サイズを確認してください");
  let cols,rows,x,y,pitchX,pitchY,offsetX=0,offsetY=0;
  if(custom){
@@ -56,14 +57,16 @@ function config(){
  }
  const capacity=cols*rows;
  if(!capacity||capacity>500)throw Error("A4に配置できません");
- const pages=Math.ceil(count/capacity);if(pages>25)throw Error("25ページ以内に収まるよう枚数や寸法を変更してください");
- return {shape,w,h,font,count,cols,rows,capacity,pages,x,y,pitchX,pitchY,custom,text:$("labelText").value.slice(0,100),csv}
+ if(!Number.isInteger(startSlot)||startSlot<1||startSlot>capacity)throw Error("印刷開始位置は1〜"+capacity+"の範囲で指定してください");
+ const skip=startSlot-1,pages=Math.ceil((count+skip)/capacity);
+ if(pages>25)throw Error("25ページ以内に収まるよう枚数や寸法を変更してください");
+ return {shape,w,h,font,count,cols,rows,capacity,pages,x,y,pitchX,pitchY,custom,skip,drawFrame,text:$("labelText").value.slice(0,100),csv}
 }
 function items(s,page){
- const begin=page*s.capacity;
- return Array.from({length:Math.min(s.capacity,s.count-begin)},(_,i)=>{
-  const col=i%s.cols,row=Math.floor(i/s.cols);
-  return {index:begin+i,x:s.x+col*s.pitchX,y:s.y+row*s.pitchY,text:s.csv?s.csv[begin+i]:s.text}
+ const begin=Math.max(0,page*s.capacity-s.skip),end=Math.min(s.count,(page+1)*s.capacity-s.skip);
+ return Array.from({length:Math.max(0,end-begin)},(_,i)=>{
+  const index=begin+i,slot=s.skip+index-page*s.capacity,col=slot%s.cols,row=Math.floor(slot/s.cols);
+  return {index,slot,x:s.x+col*s.pitchX,y:s.y+row*s.pitchY,text:s.csv?s.csv[index]:s.text}
  })
 }
 function linesOf(text){return String(text).split(/\n/).slice(0,3)}
@@ -86,6 +89,15 @@ function context(canvas){
  ctx.fillStyle="#fff";ctx.fillRect(0,0,210,297);return ctx
 }
 function drawPreview(ctx,s,page){
+ if(page===0&&s.skip){
+  for(let slot=0;slot<s.skip;slot++){
+   const x=s.x+(slot%s.cols)*s.pitchX,y=s.y+Math.floor(slot/s.cols)*s.pitchY;
+   ctx.fillStyle="#ebefed";ctx.fillRect(x,y,s.w,s.h);
+   ctx.strokeStyle="#b4c4bb";ctx.lineWidth=.1;ctx.strokeRect(x,y,s.w,s.h);
+   ctx.fillStyle="#65766e";ctx.textAlign="center";ctx.font="3px sans-serif";
+   ctx.fillText("使用済み",x+s.w/2,y+s.h/2);
+  }
+ }
  for(const item of items(s,page)){
   const {x,y,text}=item;
   ctx.beginPath();
@@ -126,8 +138,10 @@ function buildPdf(s){
      page.jpeg(canvas,x+region.inset,y+region.inset,region.w,region.h,{cacheKey:key,quality:.98});
     }
    }
-   if(s.shape==="circle")page.ellipse(x+s.w/2,y+s.h/2,s.w/2,s.w/2,"#667a6f",.16);
-   else page.rect(x,y,s.w,s.h,"#667a6f",.16)
+   if(s.drawFrame){
+    if(s.shape==="circle")page.ellipse(x+s.w/2,y+s.h/2,s.w/2,s.w/2,"#667a6f",.16);
+    else page.rect(x,y,s.w,s.h,"#667a6f",.16)
+   }
   }
  }
  return doc.blob()
@@ -143,9 +157,9 @@ function render(){
   $("labelPrevPage").disabled=current===0;$("labelNextPage").disabled=current===s.pages-1;
   const canvas=$("labelPreview");canvas.width=420;canvas.height=594;
   drawPreview(context(canvas),s,current);
-  const clipped=items(s,current).some(x=>linesOf(x.text).some(t=>t.length*fontSize(s,x.text)>(s.w-2)*1.2));
-  $("labelSummary").innerHTML="<h3>A4のラベル配置</h3><b>1ページ "+s.capacity+"枚</b><p>"+s.cols+"列 × "+s.rows+"行・PDF "+s.pages+"ページ</p><p>最終ページ："+(s.count-(s.pages-1)*s.capacity)+"枚</p><small>"+(s.custom?"台紙の指定ピッチと印刷位置補正を使用。":"自動配置。")+"枠線・英数字はベクター、日本語は高解像度画像。"+(clipped?"文字が枠からはみ出す可能性があるため、短くしてください。":"")+"</small>";
-  $("labelCsvStatus").textContent=s.csv?("CSVから"+s.csv.length+"件読み込み。例："+s.csv.slice(0,2).map(t=>t.replace(/\n/g," / ")).join("、")):"CSVは未使用です。";
+  const smallText=items(s,current).some(x=>x.text.trim()&&fontSize(s,x.text)<2);
+  $("labelSummary").innerHTML="<h3>A4のラベル配置</h3><b>1ページ最大 "+s.capacity+"枠</b><p>"+s.cols+"列 × "+s.rows+"行・PDF "+s.pages+"ページ</p><p>今回印刷する枚数："+s.count+"枚／開始位置："+(s.skip+1)+"番</p><p>最終ページ："+items(s,s.pages-1).length+"枚</p><small>"+(s.custom?"台紙の指定ピッチと補正を使用。":"自動配置。")+(s.drawFrame?"枠線を印刷。":"枠線はPDFに印刷しません。")+(smallText?" 一部の文字が小さくなるため、内容を短くしてください。":"")+"</small>";
+  $("labelCsvStatus").textContent=s.csv?("CSVから"+s.csv.length+"件読み込みました。文字はこの端末内で処理します。"):"CSVは未使用です。";
  }catch(e){$("labelSummary").textContent=e.message;$("labelCsvStatus").textContent=e.message}
 }
 form.addEventListener("submit",async e=>{
@@ -165,21 +179,31 @@ const presets={
 for(const btn of document.querySelectorAll("[data-label-preset]"))btn.addEventListener("click",()=>{
  const s=presets[btn.dataset.labelPreset];if(!s)return;
  for(const [k,id]of [["shape","labelShape"],["w","labelWidth"],["h","labelHeight"],["m","labelMargin"],["gap","labelGap"],["count","labelCount"],["font","labelFont"]])$(id).value=s[k];
- $("labelSheetMode").value="auto";$("labelGridFields").disabled=true;render();
+ $("labelSheetMode").value="auto";$("labelGridFields").disabled=true;$("labelStartSlot").value="1";$("labelDrawFrame").checked=true;render();
 });
 $("labelSheetMode").addEventListener("change",()=>{
- $("labelGridFields").disabled=$("labelSheetMode").value!=="custom";render();
+ $("labelGridFields").disabled=$("labelSheetMode").value!=="custom";$("labelStartSlot").value="1";$("labelDrawFrame").checked=$("labelSheetMode").value!=="custom";render();
 });
 $("labelCsvFile").addEventListener("change",async()=>{
  const file=$("labelCsvFile").files?.[0];if(!file)return;
- if(file.size>1024*1024){$("labelCsvStatus").textContent="CSVは1MB以下にしてください";return}
+ if(file.size>100*1024){$("labelCsvStatus").textContent="CSVは100KB以下にしてください";return}
  try{$("labelCsvText").value=await file.text();$("labelCsvEnabled").checked=true;render()}
  catch(e){$("labelCsvStatus").textContent="CSVを読み込めません："+e.message}
+});
+$("labelCsvSample").addEventListener("click",()=>{
+ const bom="\uFEFF",example="名前,番号\r\n田中,001\r\n佐藤,002\r\n",blob=new Blob([bom,example],{type:"text/csv;charset=utf-8"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="label-sample.csv";document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+ $("labelCsvStatus").textContent="CSVの見本を保存しました。";
+});
+$("labelCsvClear").addEventListener("click",()=>{
+ $("labelCsvText").value="";$("labelCsvFile").value="";$("labelCsvEnabled").checked=false;render();
 });
 $("labelPreviewPage").addEventListener("change",render);
 $("labelPrevPage").addEventListener("click",()=>{$("labelPreviewPage").value=String(Math.max(0,Number($("labelPreviewPage").value)-1));render()});
 $("labelNextPage").addEventListener("click",()=>{$("labelPreviewPage").value=String(Number($("labelPreviewPage").value)+1);render()});
-for(const id of ["labelShape","labelWidth","labelHeight","labelMargin","labelGap","labelCount","labelFont","labelText","labelCols","labelRows","labelStartX","labelStartY","labelPitchX","labelPitchY","labelOffsetX","labelOffsetY","labelCsvEnabled","labelCsvHeader","labelCsvText"])
+for(const id of ["labelShape","labelWidth","labelHeight","labelMargin","labelGap","labelCount","labelStartSlot","labelDrawFrame","labelFont","labelText","labelCols","labelRows","labelStartX","labelStartY","labelPitchX","labelPitchY","labelOffsetX","labelOffsetY","labelCsvEnabled","labelCsvHeader","labelCsvText"])
  $(id).addEventListener("input",render);
 render();
 })();
