@@ -76,7 +76,7 @@ function renderPreview(){
   selector.value=String(current);
   $("pdfPrevPage").disabled=current===0;$("pdfNextPage").disabled=current===s.pages-1;
   preview.width=cw;preview.height=ch;draw(canvasContext(preview,s.pw,s.ph),s,current,true);
-  summary.innerHTML="<h3>印刷配置</h3><b>1ページ最大 "+s.capacity+"枚</b><p>"+s.cols+"列 × "+s.rows+"行 ／ PDF "+s.pages+"ページ</p><p>最後のページ："+(s.count-(s.pages-1)*s.capacity)+"枚だけ配置</p><small>画像："+imageList.length+"件。画像が複数の場合は順番に1枠ずつ使用します。混在回転による最適化は行いません。</small>";
+  summary.innerHTML="<h2>印刷配置</h2><b>1ページ最大 "+s.capacity+"枚</b><p>"+s.cols+"列 × "+s.rows+"行 ／ PDF "+s.pages+"ページ</p><p>最後のページ："+(s.count-(s.pages-1)*s.capacity)+"枚だけ配置</p><small>画像："+imageList.length+"件。画像が複数の場合は順番に1枠ずつ使用します。混在回転による最適化は行いません。</small>";
  }catch(e){summary.textContent=e.message;const ctx=preview.getContext("2d");ctx?.clearRect(0,0,preview.width,preview.height)}
 }
 function decodeImage(file){
