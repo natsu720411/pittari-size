@@ -23,7 +23,7 @@ const input=document.getElementById("siteSearch"),suggest=document.getElementByI
 if(input&&suggest){
  input.setAttribute("autocomplete","off");
  input.setAttribute("aria-controls","suggest");
- input.setAttribute("aria-expanded","false");
+ 
  suggest.setAttribute("aria-live","polite");
  function showSuggestions(){
   const query=input.value.trim(),results=query?hits(query,9):[];
@@ -35,13 +35,13 @@ if(input&&suggest){
    a.append(span,small);suggest.append(a)
   });
   suggest.hidden=!results.length;
-  input.setAttribute("aria-expanded",String(results.length>0));
+  
  }
  function firstMatch(){const found=hits(input.value,1);if(input.value.trim()&&found.length)location.assign(found[0].url)}
  input.addEventListener("input",showSuggestions);
  input.addEventListener("keydown",event=>{
   if(event.key==="Enter"){event.preventDefault();firstMatch()}
-  if(event.key==="Escape"){suggest.hidden=true;input.setAttribute("aria-expanded","false")}
+  if(event.key==="Escape"){suggest.hidden=true;}
   if(event.key==="ArrowDown"){const first=suggest.querySelector("a");if(first){event.preventDefault();first.focus()}}
  });
  suggest.addEventListener("keydown",event=>{
@@ -55,7 +55,7 @@ if(input&&suggest){
   }
  });
  document.getElementById("searchButton")?.addEventListener("click",firstMatch);
- document.addEventListener("click",event=>{if(!event.target.closest(".search")){suggest.hidden=true;input.setAttribute("aria-expanded","false")}});
+ document.addEventListener("click",event=>{if(!event.target.closest(".search")){suggest.hidden=true;}});
 }
 const header=document.querySelector("header .header");
 if(header&&typeof HTMLDialogElement!=="undefined"){
