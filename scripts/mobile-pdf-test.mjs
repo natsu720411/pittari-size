@@ -224,7 +224,7 @@ try{
  assert.ok((await page.locator("#labelSummary").textContent()).includes("6枚"),"custom label sheet 2 cols × 3 rows");
  const custom=await pdfFromDownload(page,"#labelDownload","pittari-labels.pdf");
  assert.equal(custom.pdf.getPageCount(),1);
- assert.ok(vectorStreams(custom.buffer)[0].includes(" re S Q"));
+ assert.ok(!vectorStreams(custom.buffer)[0].includes(" re S Q"),"commercial label mode disables printed cut frames by default");
  pass("commercial label sheet custom rows, cols, pitches and alignment offset");
  await page.locator("#labelText").fill("TEST");
  await page.locator("#labelStartSlot").fill("4");
