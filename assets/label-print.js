@@ -1,8 +1,34 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id),form=$("labelForm");if(!form)return;
 const pt=72/25.4,quality=600/25.4,PDF=()=>new window.PittariVectorPDF.PDF();
-let dataRows=[],csvError="",lastCsv="";
+let slotFlags=[],slotLayoutSize=0;
 function number(id){return Number($(id).value)}
+
+function manualMode(){return $("labelSlotMode").value==="manual"}
+function slotsUI(capacity){
+ const manual=manualMode(),picker=$("labelSlotPicker"),grid=$("labelSlotGrid");
+ picker.hidden=!manual;$("labelStartSlot").disabled=manual;
+ if(manual&&capacity>120)throw Error("個別枠の指定は120枠以下の台紙で利用してください");
+ if(slotLayoutSize!==capacity){
+  slotFlags=Array(capacity).fill(true);slotLayoutSize=capacity;grid.replaceChildren();
+  if(capacity<=120){
+   const fragment=document.createDocumentFragment();
+   for(let i=0;i<capacity;i++){
+    const label=document.createElement("label");label.className="slot-option";
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=true;cb.dataset.slot=String(i+1);
+    const text=document.createElement("span");text.textContent=String(i+1);
+    label.append(cb,text);fragment.append(label);
+   }
+   grid.append(fragment);
+  }
+ }
+ for(const cb of grid.querySelectorAll("input[data-slot]")){
+  const i=Number(cb.dataset.slot)-1;if(i>=slotFlags.length)continue;
+  cb.checked=slotFlags[i];cb.closest("label")?.classList.toggle("slot-used",!cb.checked);
+ }
+ if(manual)$("labelSlotsStatus").textContent="印刷する空き枠："+slotFlags.filter(Boolean).length+" / "+capacity+"枠。指定するのは1ページ目だけです。";
+}
+
 function parseCSV(text){
  if(text.length>100000)throw Error("CSVは100KB以下にしてください");
  const rows=[];let row=[],field="",quoted=false;
@@ -41,7 +67,7 @@ function config(){
  const shape=$("labelShape").value,w=number("labelWidth"),h=shape==="circle"?w:number("labelHeight");
  const margin=number("labelMargin"),gap=number("labelGap"),font=number("labelFont");
  const csv=csvItems(),count=csv?csv.length:number("labelCount"),custom=$("labelSheetMode").value==="custom";
- const startSlot=number("labelStartSlot"),drawFrame=$("labelDrawFrame").checked;
+ const startSlot=number("labelStartSlot"),drawFrame=$("labelDrawFrame").checked,manual=manualMode();
  if(![w,h,margin,gap,font,count].every(Number.isFinite)||w<10||w>190||h<10||h>277||margin<0||margin>50||gap<0||gap>50||font<1||font>18||!Number.isInteger(count)||count<1||count>300)throw Error("寸法・枚数・文字サイズを確認してください");
  let cols,rows,x,y,pitchX,pitchY,offsetX=0,offsetY=0;
  if(custom){
@@ -62,14 +88,20 @@ function config(){
  const capacity=cols*rows;
  if(!capacity||capacity>500)throw Error("A4に配置できません");
  if(!Number.isInteger(startSlot)||startSlot<1||startSlot>capacity)throw Error("印刷開始位置は1〜"+capacity+"の範囲で指定してください");
- const skip=startSlot-1,pages=Math.ceil((count+skip)/capacity);
+ slotsUI(capacity);
+ const skip=manual?0:startSlot-1;
+ const firstSlots=manual?slotFlags.flatMap((v,i)=>v?[i]:[]):Array.from({length:capacity-skip},(_,i)=>i+skip);
+ if(!firstSlots.length)throw Error("印刷可能な空き枠を最低1つ選択してください");
+ const firstPageAmount=Math.min(firstSlots.length,count),pages=1+Math.ceil(Math.max(0,count-firstPageAmount)/capacity);
  if(pages>25)throw Error("25ページ以内に収まるよう枚数や寸法を変更してください");
- return {shape,w,h,font,count,cols,rows,capacity,pages,x,y,pitchX,pitchY,custom,skip,drawFrame,text:$("labelText").value.slice(0,100),csv}
+ return {shape,w,h,font,count,cols,rows,capacity,pages,x,y,pitchX,pitchY,custom,manual,firstSlots,skip,drawFrame,text:$("labelText").value.slice(0,100),csv}
 }
 function items(s,page){
- const begin=Math.max(0,page*s.capacity-s.skip),end=Math.min(s.count,(page+1)*s.capacity-s.skip);
+ const firstCount=Math.min(s.firstSlots.length,s.count);
+ const begin=page===0?0:firstCount+(page-1)*s.capacity;
+ const end=Math.min(s.count,page===0?firstCount:begin+s.capacity);
  return Array.from({length:Math.max(0,end-begin)},(_,i)=>{
-  const index=begin+i,slot=s.skip+index-page*s.capacity,col=slot%s.cols,row=Math.floor(slot/s.cols);
+  const index=begin+i,slot=page===0?s.firstSlots[i]:i,col=slot%s.cols,row=Math.floor(slot/s.cols);
   return {index,slot,x:s.x+col*s.pitchX,y:s.y+row*s.pitchY,text:s.csv?s.csv[index]:s.text}
  })
 }
@@ -93,8 +125,10 @@ function context(canvas){
  ctx.fillStyle="#fff";ctx.fillRect(0,0,210,297);return ctx
 }
 function drawPreview(ctx,s,page){
- if(page===0&&s.skip){
-  for(let slot=0;slot<s.skip;slot++){
+ if(page===0&&s.firstSlots.length<s.capacity){
+  const selected=new Set(s.firstSlots);
+  for(let slot=0;slot<s.capacity;slot++){
+   if(selected.has(slot))continue;
    const x=s.x+(slot%s.cols)*s.pitchX,y=s.y+Math.floor(slot/s.cols)*s.pitchY;
    ctx.fillStyle="#ebefed";ctx.fillRect(x,y,s.w,s.h);
    ctx.strokeStyle="#b4c4bb";ctx.lineWidth=.1;ctx.strokeRect(x,y,s.w,s.h);
@@ -162,7 +196,7 @@ function render(){
   const canvas=$("labelPreview");canvas.width=420;canvas.height=594;
   drawPreview(context(canvas),s,current);
   const smallText=items(s,current).some(x=>x.text.trim()&&fontSize(s,x.text)<2);
-  $("labelSummary").innerHTML="<h3>A4のラベル配置</h3><b>1ページ最大 "+s.capacity+"枠</b><p>"+s.cols+"列 × "+s.rows+"行・PDF "+s.pages+"ページ</p><p>今回印刷する枚数："+s.count+"枚／開始位置："+(s.skip+1)+"番</p><p>最終ページ："+items(s,s.pages-1).length+"枚</p><small>"+(s.custom?"台紙の指定ピッチと補正を使用。":"自動配置。")+(s.drawFrame?"枠線を印刷。":"枠線はPDFに印刷しません。")+(smallText?" 一部の文字が小さくなるため、内容を短くしてください。":"")+"</small>";
+  $("labelSummary").innerHTML="<h3>A4のラベル配置</h3><b>1ページ最大 "+s.capacity+"枠</b><p>"+s.cols+"列 × "+s.rows+"行・PDF "+s.pages+"ページ</p><p>今回印刷する枚数："+s.count+"枚／"+(s.manual?"1枚目の空き枠："+s.firstSlots.map(x=>x+1).join("・")+"番":"開始位置："+(s.skip+1)+"番")+"</p><p>最終ページ："+items(s,s.pages-1).length+"枚</p><small>"+(s.custom?"台紙の指定ピッチと補正を使用。":"自動配置。")+(s.drawFrame?"枠線を印刷。":"枠線はPDFに印刷しません。")+(smallText?" 一部の文字が小さくなるため、内容を短くしてください。":"")+"</small>";
   $("labelCsvStatus").textContent=s.csv?("CSVから"+s.csv.length+"件読み込みました。文字はこの端末内で処理します。"):"CSVは未使用です。";
  }catch(e){$("labelSummary").textContent=e.message;$("labelCsvStatus").textContent=e.message}
 }
@@ -183,7 +217,7 @@ const presets={
 for(const btn of document.querySelectorAll("[data-label-preset]"))btn.addEventListener("click",()=>{
  const s=presets[btn.dataset.labelPreset];if(!s)return;
  for(const [k,id]of [["shape","labelShape"],["w","labelWidth"],["h","labelHeight"],["m","labelMargin"],["gap","labelGap"],["count","labelCount"],["font","labelFont"]])$(id).value=s[k];
- $("labelSheetMode").value="auto";$("labelGridFields").disabled=true;$("labelStartSlot").value="1";$("labelDrawFrame").checked=true;render();
+ $("labelSheetMode").value="auto";$("labelGridFields").disabled=true;$("labelSlotMode").value="sequential";$("labelStartSlot").value="1";$("labelDrawFrame").checked=true;render();
 });
 $("labelSheetMode").addEventListener("change",()=>{
  $("labelGridFields").disabled=$("labelSheetMode").value!=="custom";$("labelStartSlot").value="1";$("labelDrawFrame").checked=$("labelSheetMode").value!=="custom";render();
@@ -204,6 +238,15 @@ $("labelCsvSample").addEventListener("click",()=>{
 $("labelCsvClear").addEventListener("click",()=>{
  $("labelCsvText").value="";$("labelCsvFile").value="";$("labelCsvEnabled").checked=false;render();
 });
+$("labelSlotMode").addEventListener("change",render);
+$("labelSlotGrid").addEventListener("change",event=>{
+ const target=event.target;
+ if(!target?.matches?.("input[data-slot]"))return;
+ const index=Number(target.dataset.slot)-1;if(index<0||index>=slotFlags.length)return;
+ slotFlags[index]=target.checked;render();
+});
+$("labelSlotsAll").addEventListener("click",()=>{slotFlags.fill(true);render()});
+$("labelSlotsNone").addEventListener("click",()=>{slotFlags.fill(false);render()});
 $("labelPreviewPage").addEventListener("change",render);
 $("labelPrevPage").addEventListener("click",()=>{$("labelPreviewPage").value=String(Math.max(0,Number($("labelPreviewPage").value)-1));render()});
 $("labelNextPage").addEventListener("click",()=>{$("labelPreviewPage").value=String(Number($("labelPreviewPage").value)+1);render()});
