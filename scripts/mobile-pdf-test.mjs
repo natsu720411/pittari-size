@@ -224,6 +224,7 @@ try{
  assert.equal(previewPng.suggestedFilename(),"pittari-preview.png");
  pass("print preview PNG file download");
  await page.locator("#pdfShareUrl").click();
+ await page.waitForFunction(()=>document.getElementById("pdfPresetStatus")?.textContent.includes("URL"),undefined,{timeout:10000});
  assert.ok((await page.locator("#pdfPresetStatus").textContent()).includes("URL"),"share URL generated or copied");
  pass("print setup shareable URL");
  await page.goto(origin+"/tools/overlay/?ov1=a3&ov2=a5&ov3=none",{waitUntil:"load"});
