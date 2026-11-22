@@ -56,3 +56,10 @@
 画像の選択はブラウザ内で行い、JPEG/PNG/WebPなどの画像形式に対応。HEIC/HEIFの読取可否はブラウザに依存する。50MBより大きいファイルは拒否。
 PPI判定は画質や印刷業者の入稿可否の保証ではない。
 参考：https://canon.jp/biz/product/printer/imageprograf/graphic-photo/essentials2018/print-tips
+
+## 2026-11-22 — 全ページ検索と一覧
+
+- `/all-pages/`：カテゴリ別の静的HTML一覧。JavaScript無効でもリンクをたどれる。
+- 全ページのヘッダーに検索ボタンを追加。Ctrl/⌘+Kまたは入力欄以外で「/」で検索。検索候補のキーボード操作に対応。
+- 主要カテゴリページの静的ナビゲーション・フッターを統一。
+- サイトマップ70 URL、検索対象70ページ。Googleへのインデックス登録とは異なる。
