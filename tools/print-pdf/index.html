@@ -15,7 +15,11 @@
 <label for="pdfZoom">拡大倍率 <output id="pdfZoomOutput">100%</output></label><input type="range" id="pdfZoom" min="100" max="300" value="100" step="5">
 <label for="pdfPanX">左右の位置</label><input type="range" id="pdfPanX" min="-100" max="100" value="0" step="5">
 <label for="pdfPanY">上下の位置</label><input type="range" id="pdfPanY" min="-100" max="100" value="0" step="5">
-<button id="pdfResetPhoto" type="button" class="copy-action">位置をリセット</button><p id="pdfPpiStatus" role="status" aria-live="polite">写真を選ぶと画質の目安を確認できます。</p>
+<button id="pdfResetPhoto" type="button" class="copy-action">位置をリセット</button><div class="photo-edit-history">
+<button id="pdfUndoPhoto" type="button" class="copy-action" disabled>元に戻す</button>
+<button id="pdfRedoPhoto" type="button" class="copy-action" disabled>やり直す</button>
+<button id="pdfClearDraft" type="button" class="copy-action">一時保存を削除</button></div>
+<p id="pdfDraftStatus" role="status" aria-live="polite">編集内容はこのタブ内で一時保存します。同じ写真を再選択すると復元できます。写真のデータ自体は保存しません。</p><p id="pdfPpiStatus" role="status" aria-live="polite">写真を選ぶと画質の目安を確認できます。</p>
 <small>プレビューの写真をドラッグして位置を調整することもできます。変更は印刷PDFにも反映されます。</small></fieldset>
 <button class="btn" type="submit" id="pdfCreate">印刷用PDFを保存</button>
 <p id="pdfStatus" role="status" aria-live="polite">PDFはブラウザ内で生成します。印刷時は倍率100%を指定してください。</p>

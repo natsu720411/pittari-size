@@ -64,10 +64,18 @@ function draw(ctx,settings,page,illustrate){
   if(!illustrate)guide(ctx,x,y,settings.w,settings.h);
  }
 }
+function activePage(){const s=layout();return Math.max(0,Math.min(s.pages-1,Number($("pdfPreviewPage")?.value)||0))}
 function renderPreview(){
  try{
   const s=layout(),scale=Math.min(440/s.pw,560/s.ph),cw=Math.max(1,Math.round(s.pw*scale)),ch=Math.max(1,Math.round(s.ph*scale));
-  preview.width=cw;preview.height=ch;draw(canvasContext(preview,s.pw,s.ph),s,0,true);
+  const selector=$("pdfPreviewPage"),current=Math.min(s.pages-1,Math.max(0,Number(selector.value)||0));
+  if(selector.options.length!==s.pages){
+   selector.replaceChildren();
+   for(let i=0;i<s.pages;i++){const option=document.createElement("option");option.value=String(i);option.textContent=(i+1)+" / "+s.pages+"ページ";selector.append(option)}
+  }
+  selector.value=String(current);
+  $("pdfPrevPage").disabled=current===0;$("pdfNextPage").disabled=current===s.pages-1;
+  preview.width=cw;preview.height=ch;draw(canvasContext(preview,s.pw,s.ph),s,current,true);
   summary.innerHTML="<h3>印刷配置</h3><b>1ページ最大 "+s.capacity+"枚</b><p>"+s.cols+"列 × "+s.rows+"行 ／ PDF "+s.pages+"ページ</p><p>最後のページ："+(s.count-(s.pages-1)*s.capacity)+"枚だけ配置</p><small>画像："+imageList.length+"件。画像が複数の場合は順番に1枠ずつ使用します。混在回転による最適化は行いません。</small>";
  }catch(e){summary.textContent=e.message;const ctx=preview.getContext("2d");ctx?.clearRect(0,0,preview.width,preview.height)}
 }
@@ -96,59 +104,66 @@ $("pdfImage").addEventListener("change",async()=>{
  }catch(e){if(current!==imageVersion)return;filesStatus.textContent=e.message}
  renderPreview();
 });
-function blobPdf(images,w,h){
- const pages=images.length,W=(w*mmPt).toFixed(5),H=(h*mmPt).toFixed(5),objects=[null,{text:"<< /Type /Catalog /Pages 2 0 R >>"},{text:"<< /Type /Pages /Count "+pages+" /Kids ["+Array.from({length:pages},(_,i)=>(i+3)+" 0 R").join(" ")+"] >>"}];
- const encImage=bytes=>{const binary=atob(bytes),arr=new Uint8Array(binary.length);for(let i=0;i<arr.length;i++)arr[i]=binary.charCodeAt(i);return arr};
- const imageIds=[],contentIds=[];
- for(let i=0;i<pages;i++){
-  imageIds.push(3+pages+i);contentIds.push(3+2*pages+i);
-  objects[3+i]={text:"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+W+" "+H+"] /Resources << /XObject << /Im0 "+imageIds[i]+" 0 R >> >> /Contents "+contentIds[i]+" 0 R >>"};
+function imageCrop(img,s,index){
+ const scale=Math.max(s.w/img.naturalWidth,s.h/img.naturalHeight);
+ const edit=window.PittariPrintEditor?.getEdit(index%imageList.length)||{zoom:1,panX:0,panY:0};
+ const zoom=Math.max(1,Math.min(3,edit.zoom)),sw=s.w/scale/zoom,sh=s.h/scale/zoom;
+ const sx=Math.max(0,img.naturalWidth-sw)*(.5+.5*edit.panX),sy=Math.max(0,img.naturalHeight-sh)*(.5+.5*edit.panY);
+ const canvas=document.createElement("canvas");
+ canvas.width=Math.ceil(s.w*mmPx);canvas.height=Math.ceil(s.h*mmPx);
+ if(canvas.width*canvas.height>12000000)throw Error("画像サイズが大きすぎます");
+ const ctx=canvas.getContext("2d",{alpha:false});if(!ctx)throw Error("画像の描画に対応していません");
+ ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+ ctx.drawImage(img,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+ return canvas
+}
+function vectorPDF(s){
+ if(!window.PittariVectorPDF?.PDF)throw Error("PDFライブラリを読み込めませんでした");
+ const pdf=new window.PittariVectorPDF.PDF(),cached=new Map();
+ for(let number=0;number<s.pages;number++){
+  const page=pdf.addPage(s.pw,s.ph);
+  for(const {x,y,index} of slots(s,number)){
+   const source=imageList.length?index%imageList.length:-1;
+   if(source>=0){
+    const img=imageList[source],ed=window.PittariPrintEditor?.getEdit(source)||{zoom:1,panX:0,panY:0};
+    const key=source+":"+s.w+":"+s.h+":"+ed.zoom+":"+ed.panX+":"+ed.panY;
+    if(!cached.has(key))cached.set(key,imageCrop(img,s,index));
+    page.jpeg(cached.get(key),x,y,s.w,s.h,{cacheKey:key});
+   }else page.ascii(String(index+1),x+s.w/2,y+s.h/2,Math.min(6,s.h/4),"#47695d");
+   page.rect(x,y,s.w,s.h,"#6f8e81",.14);
+   for(const cx of [x,x+s.w])for(const cy of [y,y+s.h]){
+    const dx=cx===x?-1:1,dy=cy===y?-1:1;
+    page.line(cx+dx*.5,cy,cx+dx*2.5,cy,"#526e62",.17);
+    page.line(cx,cy+dy*.5,cx,cy+dy*2.5,"#526e62",.17);
+   }
+  }
  }
- for(let i=0;i<pages;i++){
-  const jpg=encImage(images[i].data);
-  objects[imageIds[i]]={dict:"<< /Type /XObject /Subtype /Image /Width "+images[i].width+" /Height "+images[i].height+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+jpg.length+" >>",bytes:jpg};
-  const stream=enc.encode("q "+W+" 0 0 "+H+" 0 0 cm /Im0 Do Q\n");
-  objects[contentIds[i]]={dict:"<< /Length "+stream.length+" >>",bytes:stream};
- }
- const chunks=[],offsets=[0];let pos=0;
- const append=v=>{const u=typeof v==="string"?enc.encode(v):v;chunks.push(u);pos+=u.length};
- append("%PDF-1.4\n");
- for(let id=1;id<objects.length;id++){
-  const o=objects[id];offsets[id]=pos;append(id+" 0 obj\n");
-  if(o.bytes){append(o.dict+"\nstream\n");append(o.bytes);append("\nendstream\n")}else append(o.text+"\n");
-  append("endobj\n");
- }
- const xref=pos;append("xref\n0 "+objects.length+"\n0000000000 65535 f \n");
- for(let i=1;i<objects.length;i++)append(String(offsets[i]).padStart(10,"0")+" 00000 n \n");
- append("trailer\n<< /Root 1 0 R /Size "+objects.length+" >>\nstartxref\n"+xref+"\n%%EOF\n");
- return new Blob(chunks,{type:"application/pdf"});
+ return pdf.blob();
 }
 function download(blob,name){
  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
 form.addEventListener("submit",async e=>{
  e.preventDefault();const button=$("pdfCreate");if(button.disabled)return;button.disabled=true;status.textContent="PDFを生成中…";
- let canvas;
  try{
-  const s=layout(),images=[];
-  canvas=document.createElement("canvas");canvas.width=Math.ceil(s.pw*mmPx);canvas.height=Math.ceil(s.ph*mmPx);
-  if(canvas.width*canvas.height>36000000)throw Error("用紙が大きすぎて出力できません");
-  for(let i=0;i<s.pages;i++){
-   const ctx=canvasContext(canvas,s.pw,s.ph);draw(ctx,s,i,false);
-   images.push({data:canvas.toDataURL("image/jpeg",.9).split(",")[1],width:canvas.width,height:canvas.height});
-   status.textContent="PDF作成中："+(i+1)+"/"+s.pages+"ページ";
-   if(i%3===2)await new Promise(resolve=>setTimeout(resolve,0));
-  }
-  const pdf=blobPdf(images,s.pw,s.ph);download(pdf,"pittari-print.pdf");
-  status.textContent="PDFを保存しました（"+s.pages+"ページ、"+(pdf.size/1048576).toFixed(2)+"MB）。最後のページは"+slots(s,s.pages-1).length+"枚だけです。";
- }catch(err){status.textContent="PDF作成エラー："+err.message}finally{if(canvas){canvas.width=1;canvas.height=1}button.disabled=false}
+  const s=layout();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const pdf=vectorPDF(s);
+  download(pdf,"pittari-print.pdf");
+  status.textContent="PDFを保存しました（"+s.pages+"ページ・"+(pdf.size/1048576).toFixed(2)+"MB）。最後のページは"+slots(s,s.pages-1).length+"枚です。裁断線はベクター形式です。";
+ }catch(err){status.textContent="PDF作成エラー："+err.message}
+ finally{button.disabled=false}
 });
+$("pdfPreviewPage").addEventListener("change",renderPreview);
+$("pdfPrevPage").addEventListener("click",()=>{$("pdfPreviewPage").value=String(Math.max(0,activePage()-1));renderPreview()});
+$("pdfNextPage").addEventListener("click",()=>{$("pdfPreviewPage").value=String(Math.min(layout().pages-1,activePage()+1));renderPreview()});
 for(const id of ["pdfPaper","pdfItem","pdfMargin","pdfGap","pdfCount"])$(id).addEventListener("input",renderPreview);
 for(const btn of document.querySelectorAll("[data-print-preset]"))btn.addEventListener("click",()=>{
  const id=btn.dataset.printPreset;$("pdfPaper").value="a4";$("pdfItem").value=id;$("pdfMargin").value=5;
  $("pdfGap").value=id==="card"?2:id==="l"?3:0;$("pdfCount").value=id==="card"?10:id==="l"?4:2;
  renderPreview();
 });
-window.PittariPrintCore={layout,slots,renderPreview,getImages:()=>imageList,getPreview:()=>preview};
+window.PittariPrintCore={layout,slots,renderPreview,getImages:()=>imageList,getPreview:()=>preview,activePage};
 renderPreview();
 })();

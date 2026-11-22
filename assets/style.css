@@ -155,3 +155,18 @@ fieldset.print-adjust:disabled{opacity:.68}
 .fit-no{color:#825e22}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @media(max-width:600px){.print-saved-presets button,.share-results button{min-height:44px}.print-saved-presets input,.print-saved-presets select{flex-basis:100%}}
+
+/* PDF pagination, custom label templates and CSV inputs */
+.print-preview-nav{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:10px 0}
+.print-preview-nav label{font-size:13px;font-weight:750}
+.print-preview-nav select{background:#fff;border:1px solid #adcdbc;border-radius:8px;min-height:44px;padding:7px 10px;color:var(--ink);font:inherit}
+.photo-edit-history{display:flex;flex-wrap:wrap;gap:8px;margin:9px 0}
+.label-custom-grid,.label-csv-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;border:1px solid #c3dcd0;background:#f9fdfb;border-radius:12px;padding:12px;min-width:0;margin:12px 0}
+.label-custom-grid legend,.label-csv-controls legend{font-weight:850;padding:0 6px;color:#164d43}
+.label-custom-grid label,.label-csv-controls label{font-weight:750;font-size:13px}
+.label-custom-grid input,.label-csv-controls input:not([type=checkbox]),.label-csv-controls textarea{box-sizing:border-box;max-width:100%;width:100%;min-width:0;font:inherit;border:1px solid #b3cbbd;border-radius:8px;padding:8px}
+.label-csv-controls .check-label{display:flex;align-items:center;gap:8px;min-height:44px}
+.label-csv-controls .check-label input{width:18px;height:18px;flex:none}
+.label-custom-grid:disabled{opacity:.6}
+#labelCsvStatus,#pdfDraftStatus{font-size:12px;overflow-wrap:anywhere}
+@media(max-width:600px){.print-preview-nav button{min-height:44px}}

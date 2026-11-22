@@ -70,7 +70,7 @@ try{
  page.on("pageerror",err=>{console.error("PAGE ERROR:",err.message)});
  for(const width of [390,320]){
   await page.setViewportSize({width,height:844});
-  for(const route of ["/","/paper/a4/","/tools/bleed/","/tools/print-pdf/","/tools/label-print/","/photo/l/"]){
+  for(const route of ["/","/paper/a4/","/tools/bleed/","/tools/print-pdf/","/tools/label-print/","/guides/label-sheet-alignment/","/photo/l/"]){
    await page.goto(origin+route,{waitUntil:"load"});
    const nav=page.locator(".mobile-tab-nav");
    await nav.waitFor({state:"visible",timeout:8000});
@@ -131,6 +131,11 @@ try{
   near(pgSize.height,297*72/25.4,.02,"Print PDF height");
  }
  pass("multi-page print layout PDF 13 cards => 2 A4 sheets");
+ await page.locator("#pdfPreviewPage").selectOption("1");
+ assert.equal(await page.locator("#pdfPreviewPage").inputValue(),"1");
+ await page.locator("#pdfPrevPage").click();
+ assert.equal(await page.locator("#pdfPreviewPage").inputValue(),"0");
+ pass("photo PDF all-pages preview navigation");
  function jpegStreams(buf){
   const marker=Buffer.from("/Filter /DCTDecode /Length "),chunks=[];let offset=0;
   while(true){
@@ -143,18 +148,21 @@ try{
   return chunks;
  }
  const raster=jpegStreams(layout.buffer);
- assert.equal(raster.length,2,"each PDF page owns a separate raster image");
+ assert.equal(raster.length,2,"two distinct source photos embedded as reusable per-cell image objects");
  const bitmaps=raster.map(data=>jpeg.decode(data,{useTArray:true,tolerantDecoding:true}));
- function pixel(img,mmX,mmY){
-  const x=Math.round(mmX*img.width/210),y=Math.round(mmY*img.height/297);
-  const at=4*(y*img.width+x);return [img.data[at],img.data[at+1],img.data[at+2]];
+ function center(img){const off=(Math.floor(img.height/2)*img.width+Math.floor(img.width/2))*4;return [img.data[off],img.data[off+1],img.data[off+2]]}
+ const redSlot=center(bitmaps[0]),blueSlot=center(bitmaps[1]);
+ assert.ok(redSlot[0]>150&&redSlot[1]<120&&blueSlot[2]>145&&blueSlot[0]<140,"different uploaded image colors preserved in embedded PDF XObjects");
+ function vectorStreams(buf){
+  const text=buf.toString("latin1");
+  return [...text.matchAll(/\d+ 0 obj\n<< \/Length \d+ >>\nstream\n([\s\S]*?)\nendstream\nendobj/g)].map(m=>m[1]);
  }
- const redSlot=pixel(bitmaps[0],50,34),blueSlot=pixel(bitmaps[0],148,34);
- assert.ok(redSlot[0]>150&&redSlot[1]<120&&blueSlot[2]>145&&blueSlot[0]<140,
-  "different uploaded images occupy different PDF slots");
- const firstFull=pixel(bitmaps[0],148,90),lastBlank=pixel(bitmaps[1],148,90);
- assert.ok(firstFull.some(v=>v<160),"position is populated in full first page");
- assert.ok(lastBlank.every(v=>v>230),"unused slot on final page stays white");
+ const contents=vectorStreams(layout.buffer);
+ assert.equal(contents.length,2,"vector PDF has one content stream per page");
+ assert.equal((contents[0].match(/\/Im\d+ Do/g)||[]).length,10,"first page holds 10 positioned images");
+ assert.equal((contents[1].match(/\/Im\d+ Do/g)||[]).length,3,"last page holds exactly 3 positioned images");
+ assert.ok(contents.every(x=>x.includes(" re S Q")),"trim borders use editable vector rectangles");
+ assert.ok(contents.every(x=>x.includes(" l S Q")),"cut marks use vector lines");
  pass("multi-image output and partial last PDF page contains no extra image frames");
  await page.goto(origin+"/tools/fold-simulator/?paper=a4&method=third",{waitUntil:"load"});
  assert.ok((await page.locator("#foldResult").textContent()).includes("99 × 210mm"),"A4 folded into 99×210mm");
@@ -196,7 +204,39 @@ try{
  for(const p of labels.pdf.getPages()){
   const size=p.getSize();near(size.width,210*72/25.4,.02,"Label PDF A4 width");near(size.height,297*72/25.4,.02,"Label PDF A4 height");
  }
+ const labelContent=vectorStreams(labels.buffer);
+ assert.equal(labelContent.length,2);
+ assert.ok(labelContent[0].includes(" re S Q"),"label rectangles are vector lines");
  pass("label presets 24/35 and two-page A4 label PDF");
+ await page.locator("#labelPreviewPage").selectOption("1");
+ assert.equal(await page.locator("#labelPreviewPage").inputValue(),"1");
+ pass("label PDF all-pages preview");
+ await page.goto(origin+"/tools/label-print/",{waitUntil:"load"});
+ await page.locator("#labelSheetMode").selectOption("custom");
+ await page.locator("#labelCols").fill("2");
+ await page.locator("#labelRows").fill("3");
+ await page.locator("#labelPitchX").fill("65");
+ await page.locator("#labelPitchY").fill("35");
+ await page.locator("#labelStartX").fill("10");
+ await page.locator("#labelStartY").fill("10");
+ await page.locator("#labelOffsetX").fill("-1");
+ await page.locator("#labelCount").fill("6");
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("6枚"),"custom label sheet 2 cols × 3 rows");
+ const custom=await pdfFromDownload(page,"#labelDownload","pittari-labels.pdf");
+ assert.equal(custom.pdf.getPageCount(),1);
+ assert.ok(vectorStreams(custom.buffer)[0].includes(" re S Q"));
+ pass("commercial label sheet custom rows, cols, pitches and alignment offset");
+ await page.locator("#labelCsvText").fill("名前,番号\n田中,001\n佐藤,002\n鈴木,003");
+ await page.locator("#labelCsvEnabled").check();
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("最終ページ：3枚"),"3 CSV rows excluding header");
+ const csvOut=await pdfFromDownload(page,"#labelDownload","pittari-labels.pdf");
+ assert.equal(csvOut.pdf.getPageCount(),1);
+ assert.equal(jpegStreams(csvOut.buffer).length,3,"Japanese row texts use individual high-resolution images");
+ assert.ok(vectorStreams(csvOut.buffer)[0].includes(" re S Q"),"CSV label outlines remain vector");
+ pass("UTF-8 CSV distinct label values and vector geometry");
+ await page.locator("#labelCsvText").fill('名前,備考\n"佐藤,営業",003\n"田中",004');
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("最終ページ：2枚"),"quoted CSV comma parsed correctly");
+ pass("quoted CSV fields parsed");
  await page.goto(origin+"/tools/print-pdf/",{waitUntil:"load"});
  const sample=(r,g,b)=>{
   const data=Buffer.alloc(50*50*4);
@@ -207,11 +247,19 @@ try{
  await page.waitForFunction(()=>!document.getElementById("pdfPhotoAdjust").disabled);
  const initialPpi=await page.locator("#pdfPpiStatus").textContent();
  assert.ok(initialPpi.includes("PPI"),"PPI warning appears for selected file");
- await page.locator("#pdfZoom").evaluate(el=>{el.value="150";el.dispatchEvent(new Event("input",{bubbles:true}))});
+ await page.locator("#pdfZoom").evaluate(el=>{el.value="150";el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}))});
  assert.equal(await page.locator("#pdfZoomOutput").textContent(),"150%");
  const scaledPpi=await page.locator("#pdfPpiStatus").textContent();
  assert.notEqual(scaledPpi,initialPpi,"zoom impacts printed pixel density");
  pass("photo crop zoom 150%, PPI adjusts, controls enabled");
+ assert.equal(await page.locator("#pdfUndoPhoto").isDisabled(),false);
+ await page.locator("#pdfUndoPhoto").click();
+ assert.equal(await page.locator("#pdfZoom").inputValue(),"100");
+ await page.locator("#pdfRedoPhoto").click();
+ assert.equal(await page.locator("#pdfZoom").inputValue(),"150");
+ const draft=await page.evaluate(()=>sessionStorage.getItem("pittari:photo-draft:v2"));
+ assert.ok(draft?.includes("1.5"),"in-session photo edits saved without file data");
+ pass("photo crop undo, redo, temporary draft metadata");
  await page.locator("#pdfSaveName").fill("自動テスト設定");
  await page.locator("#pdfSavePreset").click();
  assert.ok((await page.locator("#pdfPresetStatus").textContent()).includes("保存しました"));
