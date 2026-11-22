@@ -176,3 +176,14 @@ fieldset.print-adjust:disabled{opacity:.68}
 .label-actions button{min-height:44px}
 .tool-form .check-label{display:flex;align-items:center;gap:9px;min-height:44px;font-weight:700}
 .tool-form .check-label input[type=checkbox]{width:19px;height:19px;flex:none}
+
+/* Label paper slot selector: individual used and available positions */
+.slot-picker{padding:12px;border:1px solid #bfdbd0;border-radius:12px;background:#f8fcfa;margin:8px 0 14px}
+.slot-picker[hidden]{display:none}
+.slot-picker p{font-size:13px;margin:3px 0 11px;color:var(--muted)}
+.slot-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:7px;margin:9px 0;max-height:320px;overflow-y:auto}
+.slot-option{display:flex;align-items:center;justify-content:center;gap:6px;min-height:43px;cursor:pointer;padding:4px;border:1px solid #93c2ad;border-radius:8px;background:#e5f5ed;color:#164d43;font-weight:700}
+.slot-option input{width:17px;height:17px;margin:0;accent-color:#14765a;flex-shrink:0}
+.slot-option.slot-used{background:#edf0ef;border-color:#c5cfc9;color:#65756d}
+.slot-option:focus-within{outline:3px solid #0b705d;outline-offset:2px}
+#labelSlotsStatus{font-weight:700}

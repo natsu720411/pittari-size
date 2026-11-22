@@ -195,6 +195,13 @@ try{
  // Extended smoke tests: local label PDF, photo cropping, saved presets, image sharing.
  await page.goto(origin+"/tools/label-print/",{waitUntil:"load"});
  assert.ok((await page.locator("#labelSummary").textContent()).includes("24枚"),"24-label default layout");
+ await page.waitForFunction(()=>!!navigator.serviceWorker.controller,undefined,{timeout:15000});
+ await context.setOffline(true);
+ await page.reload({waitUntil:"domcontentloaded"});
+ await page.waitForFunction(()=>document.getElementById("labelSummary")?.textContent.includes("24枚"),undefined,{timeout:12000});
+ await context.setOffline(false);
+ pass("label PDF tool works offline using precached HTML and vector/label JavaScript");
+
  await page.locator('[data-label-preset="circle35"]').click();
  assert.ok((await page.locator("#labelSummary").textContent()).includes("35枚"),"35 circular labels");
  await page.locator('[data-label-preset="rect24"]').click();
@@ -241,6 +248,24 @@ try{
  assert.equal((usedContent[1].match(/ Tj ET Q/g)||[]).length,1,"second page prints only one remaining item");
  assert.ok(usedContent.every(c=>!c.includes(" re S Q")),"cut borders are omitted on commercial sheets");
  pass("partially used label sheets skip slots with blank output and optional no-frame PDF");
+ await page.locator("#labelSlotMode").selectOption("manual");
+ assert.equal(await page.locator("#labelStartSlot").isDisabled(),true);
+ await page.locator("#labelSlotsNone").click();
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("最低1つ"),"no available labels must be rejected");
+ await page.locator('#labelSlotGrid input[data-slot="2"]').check();
+ await page.locator('#labelSlotGrid input[data-slot="5"]').check();
+ await page.locator("#labelCount").fill("3");
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("1枚目の空き枠：2・5番"),"first page only uses two chosen slots");
+ assert.ok((await page.locator("#labelSummary").textContent()).includes("PDF 2ページ"));
+ const scattered=await pdfFromDownload(page,"#labelDownload","pittari-labels.pdf");
+ assert.equal(scattered.pdf.getPageCount(),2,"nonadjacent free slots require second page for overflow");
+ const scatteredStreams=vectorStreams(scattered.buffer);
+ assert.equal((scatteredStreams[0].match(/ Tj ET Q/g)||[]).length,2,"first page prints only two chosen free slots");
+ assert.equal((scatteredStreams[1].match(/ Tj ET Q/g)||[]).length,1,"second page starts a fresh sheet");
+ assert.ok(scatteredStreams.every(c=>!c.includes(" re S Q")),"unused slots and borderless layout generate no vector frames");
+ pass("manual selection of nonadjacent free label slots and clean next-sheet overflow");
+ await page.locator("#labelSlotMode").selectOption("sequential");
+
  await page.locator("#labelStartSlot").fill("1");
  await page.locator("#labelCount").fill("6");
  await page.locator("#labelDrawFrame").check();

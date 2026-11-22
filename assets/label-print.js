@@ -34,6 +34,10 @@ function csvItems(){
  return result
 }
 function config(){
+ const required=["labelWidth","labelMargin","labelGap","labelFont","labelCount","labelStartSlot"];
+ if($("labelShape").value!=="circle")required.push("labelHeight");
+ if($("labelSheetMode").value==="custom")required.push("labelCols","labelRows","labelStartX","labelStartY","labelPitchX","labelPitchY","labelOffsetX","labelOffsetY");
+ if(required.some(id=>$(id).value.trim()===""))throw Error("未入力の数値があります。各欄に値を入力してください");
  const shape=$("labelShape").value,w=number("labelWidth"),h=shape==="circle"?w:number("labelHeight");
  const margin=number("labelMargin"),gap=number("labelGap"),font=number("labelFont");
  const csv=csvItems(),count=csv?csv.length:number("labelCount"),custom=$("labelSheetMode").value==="custom";
